@@ -29,13 +29,15 @@ public class Robot extends IterativeRobot {
     Timer timer = new Timer();
     AnalogInput ultraSonic1 = new AnalogInput(0); // This is the front one
     AnalogInput ultraSonic2 = new AnalogInput(1); // This is the back one
-
+    int autoTimeToDrive = 2;
+    long timeInAutonomous = 0;
+    long timeInAutonomousStart = 0;
     boolean reversed = true;
-    CameraServer test = CameraServer.getInstance();
+    boolean shouldUseCameraServer = false;
+    CameraServer cameraServer = CameraServer.getInstance();
     int winginIt = 0;
     Spark conveyor = new Spark(0);
-    Spark eaterOfSouls = new Spark(1);//--------------Need to chcek
-    int loops = 0;
+    Spark eaterOfSouls = new Spark(1);//--------------Need to check
     NetworkTable diningTable;
     UsbCamera cammy = new UsbCamera("cam0", 0);
     /**
@@ -44,11 +46,22 @@ public class Robot extends IterativeRobot {
      */
 
     public void robotInit() {
-        test.startAutomaticCapture(cammy);
+
         System.out.println("initializing");
+
+        //Begin capturing images to send to dashboard
+        cameraServer.startAutomaticCapture(cammy);
+
+        //Set to server mode
         NetworkTable.setServerMode();
+
+        //Initialize All NetworkTables
         NetworkTable.initialize();
+
+        //Initializes network tables as well
         diningTable = NetworkTable.getTable("Yo");
+
+
         //FORTESTING_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_+
         flyWheel.setFeedbackDevice(CANTalon.FeedbackDevice.CtreMagEncoder_Absolute);
         flyWheel.reverseSensor(true);
@@ -68,21 +81,27 @@ public class Robot extends IterativeRobot {
      */
 
     public void autonomousInit() {
+        timeInAutonomousStart = System.currentTimeMillis();
         timer.reset();
         timer.start();
     }
 
     /**
      * This function is called periodically during autonomous
+     * Called when packet is received from driver station (about once every 20ms)
      */
 
     public void autonomousPeriodic() {
-        // Drive for 2 seconds
-        if(loops < 300) {
-            lineUp();
+
+        //Calculate the current number of Millis that we have been in Autonomous
+        timeInAutonomous = System.currentTimeMillis() - timeInAutonomousStart;
+        // Drive autoTimeToDrive number of seconds
+        if(timeInAutonomous < autoTimeToDrive*1000) {
+            //Don't try to access Camera if it shouldn't be used
+            if (shouldUseCameraServer)
+                lineUp();
             myRobot.tankDrive(1, 1);
         }
-        loops++;
     }
 
     /**
@@ -92,7 +111,9 @@ public class Robot extends IterativeRobot {
 
     public void teleopInit() {
         System.out.println("called teleopInit");
-        //cammy.setFPS(15);
+        //Don't try to access Camera if it shouldn't be used
+        if(shouldUseCameraServer)
+            cammy.setFPS(15);
     }
 
     /**
@@ -105,8 +126,13 @@ public class Robot extends IterativeRobot {
         //System.out.println(leftWheelF.getEncPosition());
         System.out.println("spd: " + flyWheel.getSpeed());
 
-        System.out.println(diningTable.getNumber("test", -37));
+        //Don't try to access Camera if it shouldn't be used
+        if(shouldUseCameraServer)
+            System.out.println(diningTable.getNumber("cameraServer", -37));
+        else
+            System.out.println("Camera Server has been disabled");
 
+        //Converting user input to motor controls
         if (stick.getRawButton(2)) {
             myRobot.tankDrive(-1, 1);
             Timer.delay(.1);
@@ -144,7 +170,7 @@ public class Robot extends IterativeRobot {
             conveyor.set(0);
         }
 
-        //Things to test:
+        //Things to cameraServer:
         //Camera
 
 
@@ -195,14 +221,16 @@ public class Robot extends IterativeRobot {
     }
 
     void lineUp() {
-        while (diningTable.getNumber("test", -37) > 0 && (diningTable.getNumber("test", -37) > 250 || diningTable.getNumber("test", -37) < 150 )) {
-            //myRobot.tankDrive(-.7,-.7); // forward
-            if(diningTable.getNumber("test", -37) > 250) {
-                myRobot.tankDrive(0,-.5);
-            } else {
-                myRobot.tankDrive(-.5,  0);
+        //Don't try to access Camera if it shouldn't be used
+        if (shouldUseCameraServer)
+            while (diningTable.getNumber("cameraServer", -37) > 0 && (diningTable.getNumber("cameraServer", -37) > 250 || diningTable.getNumber("cameraServer", -37) < 150 )) {
+                //myRobot.tankDrive(-.7,-.7); // forward
+                if(diningTable.getNumber("cameraServer", -37) > 250) {
+                    myRobot.tankDrive(0,-.5);
+                } else {
+                    myRobot.tankDrive(-.5,  0);
+                }
             }
-        }
     }
     void driveTo() {
         while (512 * (ultraSonic1.getVoltage() / 5) > 30) {
@@ -211,7 +239,7 @@ public class Robot extends IterativeRobot {
     }
 
     /**
-     * This function is called periodically during test mode
+     * This function is called periodically during cameraServer mode
      */
 
     public void testPeriodic() {
