@@ -27,7 +27,8 @@ public class Robot extends IterativeRobot {
     RobotDrive myRobot = new RobotDrive(rightWheelF, rightWheelB, leftWheelF, leftWheelB);
     Joystick stick = new Joystick(0);
     Timer timer = new Timer();
-    AnalogInput range = new AnalogInput(0);
+    AnalogInput ultraSonic1 = new AnalogInput(0); // This is the front one
+    AnalogInput ultraSonic2 = new AnalogInput(1); // This is the back one
 
     boolean reversed = true;
     CameraServer test = CameraServer.getInstance();
@@ -119,7 +120,8 @@ public class Robot extends IterativeRobot {
             myRobot.tankDrive(-stick.getRawAxis(1), -stick.getRawAxis(5) * .9);
         }
 
-        double dist = 512 * (range.getVoltage() / 5);
+        double dist = 512 * (ultraSonic1.getVoltage() / 5);
+        double dist2 = 512 * (ultraSonic2.getVoltage() / 5);
 
 //		System.out.print("dist: ");
 //		System.out.println(dist);
@@ -203,7 +205,7 @@ public class Robot extends IterativeRobot {
         }
     }
     void driveTo() {
-        while (512 * (range.getVoltage() / 5) > 30) {
+        while (512 * (ultraSonic1.getVoltage() / 5) > 30) {
             myRobot.drive(-.5, -.5);
         }
     }
